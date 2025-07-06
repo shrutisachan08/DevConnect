@@ -18,7 +18,7 @@
     "express": "^5.1.0",
     "express-session": "^1.18.1",
     "mongoose": "^8.16.0",
-    "openai": "^5.5.1",
+    "openai": "^5.8.2",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "path-to-regexp": "^6.2.1",

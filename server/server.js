@@ -1,3 +1,4 @@
+// ✅ Imports (keep at top)
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -7,18 +8,19 @@ const passport = require('passport');
 const MongoStore = require('connect-mongo');
 const http = require('http');
 const { Server } = require('socket.io');
+const generateEmbedding = require('./utils/embed');
 
-// Route imports
+// ✅ Route Imports
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const matchRoutes = require('./routes/match');
 const messageRoutes = require('./routes/messages');
 
-// ✅ Load env variables
+// ✅ Load environment variables
 dotenv.config();
 
-// ✅ Initialize app & HTTP server
+// ✅ Initialize Express & HTTP server
 const app = express();
 const server = http.createServer(app);
 
@@ -30,7 +32,7 @@ const io = new Server(server, {
   }
 });
 
-// ✅ Store online users
+// ✅ Online Users Map
 const onlineUsers = new Map();
 
 io.on('connection', (socket) => {
@@ -39,6 +41,7 @@ io.on('connection', (socket) => {
   socket.on('add-user', (userId) => {
     onlineUsers.set(userId, socket.id);
     console.log(`✅ User ${userId} registered on socket: ${socket.id}`);
+    io.emit('online-users', Array.from(onlineUsers.keys()));
   });
 
   socket.on('sendMessage', (data) => {
@@ -62,6 +65,7 @@ io.on('connection', (socket) => {
         break;
       }
     }
+    io.emit('online-users', Array.from(onlineUsers.keys()));
   });
 });
 
@@ -72,7 +76,6 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// ✅ Session (important for login tracking)
 app.use(session({
   secret: process.env.SESSION_SECRET || 'devconnect_secret',
   resave: false,
@@ -89,7 +92,6 @@ app.use(session({
   }
 }));
 
-// ✅ Passport
 app.use(passport.initialize());
 app.use(passport.session());
 require('./utils/passport');
@@ -99,9 +101,23 @@ app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/match', matchRoutes);
 app.use('/admin', adminRoutes);
-app.use('/messages', messageRoutes); // REST API for chat (ensure route name consistency)
+app.use('/messages', messageRoutes);
 
-// ✅ Basic routes
+// ✅ Optional: Embedding test route
+app.post('/test/embedding', async (req, res) => {
+  try {
+    const { input } = req.body;
+    if (!input) {
+      return res.status(400).json({ success: false, message: 'Input required' });
+    }
+    const embedding = await generateEmbedding(input);
+    res.json({ success: true, embedding });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Embedding error', error: err.message });
+  }
+});
+
+// ✅ Health/Test routes
 app.get('/', (req, res) => {
   res.send('🚀 DevConnect Backend Running');
 });
@@ -113,7 +129,7 @@ app.get('/check', (req, res) => {
   });
 });
 
-// ✅ Connect MongoDB & start server
+// ✅ Start Server
 const PORT = process.env.PORT || 5000;
 
 mongoose.connect(process.env.MONGO_URI)
